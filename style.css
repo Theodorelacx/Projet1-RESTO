@@ -1,0 +1,126 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    background-color: #f4f4f4;
+}
+
+h1 {
+    text-align: center;
+    color: #333;
+    margin-bottom: 30px;
+}
+
+/* Styles pour le conteneur principal (carte + favoris) */
+#content-wrapper {
+    display: flex;
+    justify-content: center; /* Centrer le contenu */
+    width: 100%;
+    max-width: 1200px; /* Largeur maximale */
+    gap: 20px; /* Espacement entre les colonnes */
+    flex-wrap: wrap; /* Permet le passage à la ligne sur petits écrans */
+}
+
+/* Styles pour la carte */
+#map {
+    flex: 2; /* La carte prend 2 parts de l'espace disponible */
+    height: 600px; /* Hauteur fixe */
+    min-width: 300px; /* Largeur minimale pour éviter qu'elle ne soit trop petite */
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+/* Styles pour le panneau des favoris */
+#favorites-panel {
+    flex: 1; /* Le panneau des favoris prend 1 part de l'espace disponible */
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    min-width: 250px; /* Largeur minimale */
+}
+
+#favorites-panel h2 {
+    margin-top: 0;
+    color: #555;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+    margin-bottom: 15px;
+}
+
+#favorites-list {
+    list-style-type: none;
+    padding: 0;
+}
+
+#favorites-list li {
+    background-color: #f9f9f9;
+    border: 1px solid #eee;
+    padding: 10px;
+    margin-bottom: 8px;
+    border-radius: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.95em;
+}
+
+#favorites-list li button {
+    background-color: #dc3545; /* Rouge pour "supprimer" */
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8em;
+    transition: background-color 0.2s ease;
+}
+
+#favorites-list li button:hover {
+    background-color: #c82333;
+}
+
+/* Styles pour le bouton "Ajouter aux favoris" dans les popups de la carte */
+.favorite-button {
+    background-color: #007bff; /* Bleu par défaut (Ajouter) */
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-top: 10px;
+    width: 100%; /* Prend toute la largeur de la popup */
+    font-size: 0.9em;
+    transition: background-color 0.2s ease;
+}
+
+.favorite-button.remove { /* Style quand le restaurant est déjà un favori (Retirer) */
+    background-color: #28a745; /* Vert */
+}
+
+.favorite-button:hover {
+    filter: brightness(110%); /* Légèrement plus lumineux au survol */
+}
+
+/* Styles pour l'icône de marqueur favori (personnalisé) */
+.custom-div-icon {
+    background: none !important; /* Pas de fond par défaut de Leaflet */
+    border: none !important; /* Pas de bordure par défaut */
+    box-shadow: none !important; /* Pas d'ombre */
+}
+
+.custom-div-icon.is-favorite svg {
+    /* Style de l'icône SVG pour les favoris */
+    filter: drop-shadow(0 0 3px rgba(0,0,0,0.5)); /* Petite ombre pour faire ressortir l'étoile */
+}
+
+/* Ajustement pour les petits écrans */
+@media (max-width: 768px) {
+    #content-wrapper {
+        flex-direction: column; /* La carte et le panneau de favoris s'empilent */
+        align-items: stretch; /* S'étirent pour prendre toute la largeur */
+    }
+    #map, #favorites-panel {
+        min-width: unset; /* Pas de largeur minimale */
+    }
+}

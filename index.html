@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carte des Restaurants Top Chef</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        /* Styles spécifiques à cette page */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f4f4f4;
+            display: flex; /* Utilisation de flexbox pour l'organisation */
+            flex-direction: column; /* Organise en colonne par défaut */
+            align-items: center; /* Centre les éléments */
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+        }
+
+        #content-wrapper {
+            display: flex;
+            width: 100%;
+            max-width: 1200px; /* Largeur maximale pour le contenu */
+            gap: 20px; /* Espacement entre la carte et la liste de favoris */
+            flex-wrap: wrap; /* Permet aux éléments de passer à la ligne sur petits écrans */
+        }
+
+        #map {
+            flex: 2; /* La carte prend plus d'espace */
+            height: 600px; /* Hauteur de la carte */
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            min-width: 300px; /* Largeur minimale pour la carte */
+        }
+
+        #favorites-panel {
+            flex: 1; /* Le panneau de favoris prend moins d'espace */
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            min-width: 250px; /* Largeur minimale pour le panneau */
+        }
+
+        #favorites-panel h2 {
+            margin-top: 0;
+            color: #555;
+        }
+
+        #favorites-list {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        #favorites-list li {
+            background-color: #f9f9f9;
+            border: 1px solid #eee;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 5px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #favorites-list li button {
+            background-color: #dc3545; /* Rouge pour "supprimer" */
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8em;
+        }
+
+        #favorites-list li button:hover {
+            background-color: #c82333;
+        }
+
+        .favorite-button {
+            background-color: #007bff; /* Bleu pour "ajouter" */
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 5px;
+            width: 100%; /* Prend toute la largeur de la popup */
+        }
+
+        .favorite-button.remove {
+            background-color: #28a745; /* Vert pour "retirer" si déjà favori */
+        }
+
+        .favorite-button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Style pour les marqueurs favoris (optionnel, nécessite une icône personnalisée si vous voulez) */
+        .leaflet-marker-icon.is-favorite {
+            /* Exemple: vous pouvez changer l'icône ou ajouter une bordure */
+            border: 3px solid gold; /* Bordure dorée pour les favoris */
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+    <h1>Restaurants Top Chef en France</h1>
+
+    <div id="content-wrapper">
+        <div id="map"></div>
+
+        <div id="favorites-panel">
+            <h2>Mes Restaurants Favoris</h2>
+            <ul id="favorites-list">
+                </ul>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+   <script>
+        // Coordonnées approximatives des restaurants avec un ID unique pour chaque
+        // Format : {id: "uniqueId", lat: Latitude, lon: Longitude, name: "Nom", address: "Adresse"}
+        const restaurantsData = [
+            {id: "stephanie_le_quellec_la_scene", lat: 48.8767, lon: 2.3045, name: "La Scène (Stéphanie Le Quellec)", address: "32 Avenue Matignon, 75008 Paris"},
+            {id: "pierre_sang_oberkampf", lat: 48.8656, lon: 2.3797, name: "Pierre Sang in Oberkampf", address: "55 rue Oberkampf, 75011 Paris"},
+            {id: "pierre_sang_parmentier", lat: 48.8656, lon: 2.3797, name: "Pierre Sang sur Parmentier", address: "55, rue Oberkampf, 75011 Paris"}, // Même adresse que Oberkampf
+            {id: "ludovic_turac_une_table_au_sud", lat: 43.2965, lon: 5.3700, name: "Une Table au Sud (Ludovic Turac)", address: "2 Quai du Port, 13002 Marseille"},
+            {id: "naoelle_dhainaut_lor_qidee", lat: 49.0345, lon: 2.0624, name: "L'Or Q'idée (Naoëlle d'Hainaut)", address: "14 rue Marcel-Rousier, Pontoise, 95000"},
+            {id: "norbert_tarayre_saperlipopette", lat: 48.8906, lon: 2.2359, name: "Saperlipopette (Norbert Tarayre)", address: "24 Rue Mars et Roty, 92800 Puteaux"},
+            {id: "tabata_mey_les_apothicaires", lat: 45.7672, lon: 4.8357, name: "Les Apothicaires (Tabata Mey)", address: "23 rue de Sèze, 69006 Lyon"},
+            {id: "florent_pietravalle_la_mirande", lat: 43.9515, lon: 4.8055, name: "La Mirande (Florent Pietravalle)", address: "4, Place de L'Amirande, 84000 Avignon"},
+            {id: "florent_ladeyn_auberge_vert_mont", lat: 50.8037, lon: 2.7667, name: "Auberge du Vert Mont (Florent Ladeyn)", address: "1318 rue du Mont Noir, 59299 Boeschepe"},
+            {id: "florent_ladeyn_bloemeke", lat: 50.6300, lon: 3.0600, name: "Bloemeke (Florent Ladeyn)", address: "19 rue Royale, Lille"},
+            {id: "xavier_koenig_lincontournable", lat: 47.9250, lon: 7.2917, name: "L'Incontournable (Xavier Koenig)", address: "1 rue Raymond Poincaré, 68250 Rouffach"},
+            {id: "thibault_sombardier_sellae", lat: 48.8340, lon: 2.3550, name: "Sellae (Thibault Sombardier)", address: "18 Rue des Wallons, 75013 Paris"},
+            {id: "thibault_sombardier_mensae", lat: 48.8770, lon: 2.3880, name: "Mensae (Thibault Sombardier)", address: "23 rue Melingue, 75019 Paris"},
+            {id: "jeremie_izarn_la_tour_des_sens", lat: 45.3370, lon: 5.9260, name: "La Tour des Sens (Jérémie Izarn)", address: "Route de Theys, 38570 Tencin"},
+            {id: "guillaume_sanchez_neso", lat: 48.8750, lon: 2.3400, name: "NESO (Guillaume Sanchez)", address: "3 rue Papillon, 75009 Paris"},
+            {id: "kelly_rangama_le_faham", lat: 48.8870, lon: 2.3080, name: "Le Faham (Kelly Rangama)", address: "108 rue Cardinet, 75017 Paris"},
+            {id: "camille_delcroix_la_bacove", lat: 50.7490, lon: 2.2530, name: "La Bâcove (Camille Delcroix)", address: "8 rue Caventou, 62500 Saint-Omer"},
+            {id: "victor_mercier_fief", lat: 48.8660, lon: 2.3780, name: "FIEF (Victor Mercier)", address: "44 rue de la Folie Méricourt, 75011 Paris"},
+            {id: "adrien_descouls_origines", lat: 45.5450, lon: 3.1250, name: "Origines (Adrien Descouls)", address: "Rue du Clos-de-la-Chaux, 63500 Le Broc"},
+            {id: "david_gallienne_le_jardin_des_plumes", lat: 49.0730, lon: 1.5300, name: "Le Jardin des Plumes (David Gallienne)", address: "1 rue du Milieu, 27620 Giverny"},
+            {id: "mory_sacko_mosuke", lat: 48.8350, lon: 2.3250, name: "MoSuke (Mory Sacko)", address: "11 Rue Raymond Losserand, 75014 Paris"},
+            {id: "adrien_cachot_detour", lat: 48.8860, lon: 2.3320, name: "Détour (Adrien Cachot)", address: "15 Rue Ganneron, 75018 Paris"},
+            {id: "adrien_cachot_vaisseau", lat: 48.8520, lon: 2.3850, name: "Vaisseau (Adrien Cachot)", address: "35 rue Faidherbe, 75011 Paris"},
+            {id: "mallory_gabsi", lat: 48.8680, lon: 2.2980, name: "Mallory Gabsi", address: "28 Rue des Acacias, 75017 Paris"},
+            {id: "matthias_marc_substance", lat: 48.8670, lon: 2.2950, name: "Substance (Matthias Marc)", address: "18 Rue de Chaillot, 75116 Paris"},
+            {id: "thomas_chisholm_chocho", lat: 48.8740, lon: 2.3550, name: "Chocho (Thomas Chisholm)", address: "54 Rue de Paradis, 75010 Paris"},
+            {id: "sarah_mainguy_vacarme", lat: 47.2183, lon: -1.5536, name: "Vacarme (Sarah Mainguy)", address: "5 Rue des Bons Français, 44000 Nantes"},
+            {id: "louise_bourrat_bouballe", lat: 48.8570, lon: 2.3580, name: "Bouballe (Louise Bourrat)", address: "6 Rue des Archives, 75004 Paris"},
+            {id: "thibaut_spiwack_anona", lat: 48.8820, lon: 2.3230, name: "Anona (Thibaut Spiwack)", address: "80 boulevard des Batignolles, 75017 Paris"},
+            {id: "hugo_riboulet_groot_la_tourte", lat: 48.8640, lon: 2.3480, name: "GROOT la Tourte (Hugo Riboulet)", address: "34 rue st sauveur, 75002 Paris"},
+            {id: "danny_khezzar_monsieur_claude", lat: 48.8800, lon: 2.1640, name: "Monsieur Claude (Danny Khezzar)", address: "1 Pl. Line Renaud, 92500 Rueil-Malmaison"}
+        ];
+
+        // Initialiser la carte et la centrer sur la France
+        const map = L.map('map').setView([46.603354, 1.888334], 6); // Centre de la France, niveau de zoom 6
+
+        // Ajouter une couche de tuiles OpenStreetMap
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        let favorites = JSON.parse(localStorage.getItem('restaurantFavorites')) || {};
+        const favoritesList = document.getElementById('favorites-list');
+
+        function saveFavorites() {
+            localStorage.setItem('restaurantFavorites', JSON.stringify(favorites));
+            renderFavorites();
+            updateMarkers(); // Met à jour les marqueurs après modification des favoris
+        }
+
+        function isFavorite(restaurantId) {
+            return favorites[restaurantId] === true;
+        }
+
+        function toggleFavorite(restaurant) {
+            if (isFavorite(restaurant.id)) {
+                delete favorites[restaurant.id];
+            } else {
+                favorites[restaurant.id] = true;
+            }
+            saveFavorites();
+        }
+
+        function renderFavorites() {
+            favoritesList.innerHTML = ''; // Vide la liste actuelle
+            const favoritedRestaurantData = restaurantsData.filter(r => isFavorite(r.id));
+
+            if (favoritedRestaurantData.length === 0) {
+                favoritesList.innerHTML = '<li>Aucun restaurant favori pour l\'instant.</li>';
+                return;
+            }
+
+            favoritedRestaurantData.forEach(restaurant => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span>${restaurant.name}</span>
+                    <button data-id="${restaurant.id}">Retirer</button>
+                `;
+                li.querySelector('button').addEventListener('click', () => {
+                    toggleFavorite(restaurant);
+                });
+                favoritesList.appendChild(li);
+            });
+        }
+
+        let markers = {}; // Pour stocker les marqueurs et les mettre à jour
+
+        function updateMarkers() {
+            // Supprime tous les marqueurs existants avant de les recréer
+            for (let id in markers) {
+                if (markers.hasOwnProperty(id)) { // Bonne pratique pour éviter les propriétés héritées
+                    map.removeLayer(markers[id]);
+                }
+            }
+            markers = {}; // Réinitialise l'objet des marqueurs
+
+            restaurantsData.forEach(restaurant => {
+                const isFav = isFavorite(restaurant.id);
+
+                // Crée l'icône personnalisée pour les favoris (étoile dorée)
+                const favoriteIconHtml = `
+                    <svg fill="gold" width="24" height="24" viewBox="0 0 24 24">
+                        <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+                    </svg>
+                `;
+
+                const markerIcon = isFav ? L.divIcon({
+                    className: 'custom-div-icon is-favorite', // Classes CSS pour le style
+                    html: favoriteIconHtml,
+                    iconSize: [30, 30], // Taille de l'icône
+                    iconAnchor: [15, 30], // Point d'ancrage de l'icône (centre bas)
+                    popupAnchor: [0, -25] // Position de la popup par rapport à l'icône
+                }) : L.icon({
+                    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+                    iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+                    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41],
+                    popupAnchor: [1, -34],
+                    shadowSize: [41, 41]
+                });
+
+
+                const marker = L.marker([restaurant.lat, restaurant.lon], {icon: markerIcon}).addTo(map);
+
+                let buttonClass = isFav ? 'favorite-button remove' : 'favorite-button';
+                let buttonText = isFav ? 'Retirer des favoris' : 'Ajouter aux favoris';
+
+                const popupContent = `
+                    <h3>${restaurant.name}</h3>
+                    <p>${restaurant.address}</p>
+                    <button id="fav-btn-${restaurant.id}" class="${buttonClass}">${buttonText}</button>
+                `;
+                marker.bindPopup(popupContent);
+
+                // Gérer le clic sur le bouton dans la popup
+                marker.on('popupopen', () => {
+                    // S'assurer que le bouton existe avant d'ajouter l'écouteur
+                    const favButton = document.getElementById(`fav-btn-${restaurant.id}`);
+                    if (favButton) {
+                        favButton.addEventListener('click', () => {
+                            toggleFavorite(restaurant);
+                            // Fermer la popup pour qu'elle puisse se rouvrir avec le nouvel état du bouton
+                            // Utilisez setTimeout pour que la fermeture se fasse après le traitement du clic
+                            setTimeout(() => {
+                                marker.closePopup();
+                            }, 10);
+                        });
+                    }
+                });
+                markers[restaurant.id] = marker; // Stocke le marqueur
+            });
+        }
+
+        // Initialisation de la carte et des favoris au chargement de la page
+        renderFavorites();
+        updateMarkers();
+    </script>
+</body>
+</html>
